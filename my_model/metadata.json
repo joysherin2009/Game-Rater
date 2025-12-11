@@ -1,1 +1,1 @@
-{"tfjsVersion":"1.7.4","tmVersion":"2.4.10","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2025-12-10T16:47:12.485Z","userMetadata":{},"modelName":"review","labels":["love it !!","Good "],"imageSize":224}
+{"tfjsVersion":"1.7.4","tmVersion":"2.4.10","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2025-12-11T00:46:13.478Z","userMetadata":{},"modelName":"review","labels":["love it !!","Good ","meh","poor"],"imageSize":224}
