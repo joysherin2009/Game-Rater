@@ -1,61 +1,580 @@
-<div>Teachable Machine Image Model</div>
-<button type="button" onclick="init()">Start</button>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-<script type="text/javascript">
-    // More API functions here:
-    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catch the Hearts — Rate Signs</title>
 
+  <!-- Teachable Machine dependencies (keep these as in your original) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <style>
+    :root{
+      --bg1: #ffd6e8;
+      --bg2: #d0f0ff;
+      --card: #ffffffee;
+      --accent:#ff6fa3;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, Arial, sans-serif;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: linear-gradient(135deg,var(--bg1),var(--bg2));
+      color:#222;
+      padding:20px;
+    }
+
+    .container{
+      width:100%;
+      max-width:920px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.78));
+      border-radius:18px;
+      padding:18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    header h1{
+      margin:0;
+      font-size:1.6rem;
+      letter-spacing:0.3px;
+    }
+
+    .top-row{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+
+    /* Game area */
+    #game-card{
+      display:flex;
+      gap:18px;
+      align-items:flex-start;
+      padding:14px;
+      border-radius:12px;
+      background:var(--card);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      margin-top:14px;
+    }
+
+    #game-area{
+      position:relative;
+      width:560px;
+      max-width:100%;
+      height:360px;
+      background: linear-gradient(180deg,#fff0f6, #ffeef8);
+      border-radius:10px;
+      overflow:hidden;
+      border: 3px solid rgba(255,255,255,0.6);
+    }
+
+    #hud{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-left:8px;
+      min-width:200px;
+    }
+
+    .card{
+      padding:12px;
+      border-radius:10px;
+      background:linear-gradient(180deg,#fff,#f6f6f8);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+      text-align:center;
+    }
+
+    .big{
+      font-size:1.4rem;
+      font-weight:700;
+    }
+
+    .muted{ color:#666; font-size:0.9rem }
+
+    button{
+      cursor:pointer;
+      padding:10px 14px;
+      border-radius:10px;
+      border: none;
+      font-weight:600;
+      background:linear-gradient(90deg,var(--accent), #ff9bbd);
+      color:white;
+      box-shadow: 0 8px 18px rgba(255,111,150,0.2);
+    }
+
+    button.ghost{
+      background:transparent;
+      color:var(--accent);
+      border:2px solid rgba(255,111,150,0.14);
+      box-shadow:none;
+    }
+
+    /* basket */
+    .basket{
+      position:absolute;
+      bottom:14px;
+      left:50%;
+      transform:translateX(-50%);
+      width:96px;
+      height:48px;
+      border-radius:22px;
+      background:linear-gradient(180deg,#ffe3ee,#ffb6d1);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:1.25rem;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      user-select:none;
+      touch-action:none;
+    }
+
+    .heart{
+      position:absolute;
+      width:36px;
+      height:36px;
+      background: radial-gradient(circle at 30% 30%, #ff7aa9, #ff4d88);
+      transform: rotate(-45deg);
+      border-radius:8px;
+      box-shadow: 0 6px 12px rgba(255,80,140,0.25);
+    }
+    /* create heart shape by pseudo elements */
+    .heart:before, .heart:after{
+      content:"";
+      position:absolute;
+      width:36px;
+      height:36px;
+      background: radial-gradient(circle at 30% 30%, #ff7aa9, #ff4d88);
+      border-radius:50%;
+      top:-18px;
+      left:0;
+    }
+    .heart:after{
+      left:18px;
+    }
+    /* small responsive tweaks */
+    @media (max-width:700px){
+      #hud{ order:2; width:100%; justify-content:space-between }
+      #game-card{ flex-direction:column; gap:12px; align-items:center }
+    }
+
+    /* webcam & labels area (hidden until rate) */
+    #rating-panel{
+      margin-top:14px;
+      display:flex;
+      gap:14px;
+      align-items:flex-start;
+      flex-wrap:wrap;
+    }
+    #webcam-container{
+      width:220px;
+      border-radius:12px;
+      overflow:hidden;
+      display:none;
+      background:#111;
+      padding:8px;
+    }
+    #label-container{ display:flex; flex-direction:column; gap:6px; min-width:200px; }
+    #label-container div{
+      padding:8px;
+      border-radius:8px;
+      background:linear-gradient(180deg,#fff,#fafafa);
+      box-shadow:0 4px 10px rgba(0,0,0,0.04);
+      font-weight:600;
+    }
+
+    .center { text-align:center }
+    footer{ margin-top:12px; color:#555; font-size:0.9rem }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Catch the Hearts — then Rate the Sign</h1>
+    </header>
+
+    <div class="top-row">
+      <div class="muted">Move the basket with ← → or by dragging. Catch hearts for points!</div>
+      <div>
+        <button id="show-play" title="Open the game">Play</button>
+      </div>
+    </div>
+
+    <!-- GAME CARD -->
+    <div id="game-card" aria-live="polite">
+      <div id="game-area" tabindex="0">
+        <!-- canvas elements will be created by JS inside -->
+        <div class="basket" id="basket">🧺</div>
+      </div>
+
+      <div id="hud">
+        <div class="card">
+          <div class="muted">Time</div>
+          <div class="big" id="time">10</div>
+        </div>
+        <div class="card">
+          <div class="muted">Score</div>
+          <div class="big" id="score">0</div>
+        </div>
+        <div class="card center">
+          <div class="muted">Status</div>
+          <div id="status">Press Play</div>
+          <div style="margin-top:8px">
+            <button id="rate-btn" class="ghost" style="display:none">Rate My Sign</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rating panel: webcam + labels -->
+    <div id="rating-panel">
+      <div id="webcam-container"></div>
+      <div id="label-container"></div>
+    </div>
+
+    <footer class="center">
+      Made with 💖 — use a good light for the webcam to get better predictions.
+    </footer>
+  </div>
+
+  <script>
+  /*******************************
+   * Game: Catch the Hearts
+   *******************************/
+  (function(){
+    const playBtn = document.getElementById('show-play');
+    const gameArea = document.getElementById('game-area');
+    const basket = document.getElementById('basket');
+    const timeEl = document.getElementById('time');
+    const scoreEl = document.getElementById('score');
+    const statusEl = document.getElementById('status');
+    const rateBtn = document.getElementById('rate-btn');
+
+    const GAME_DURATION = 10; // seconds
+    let timeLeft = GAME_DURATION;
+    let score = 0;
+    let hearts = []; // active hearts
+    let running = false;
+    let gameLoopId = null;
+    let spawnTimer = 0;
+    let basketX = null; // pixel x within area
+    let areaRect = null;
+
+    // initialize basket position
+    function resetBasket(){
+      areaRect = gameArea.getBoundingClientRect();
+      basketX = areaRect.width/2 - basket.offsetWidth/2;
+      updateBasket();
+    }
+    function updateBasket(){
+      basket.style.left = Math.max(6, Math.min(areaRect.width - basket.offsetWidth - 6, basketX)) + 'px';
+    }
+
+    // create heart DOM object
+    function spawnHeart(){
+      const heart = document.createElement('div');
+      heart.className = 'heart';
+      // random x within area
+      const x = Math.random() * (areaRect.width - 40) + 10;
+      const speed = 60 + Math.random() * 140; // px per second
+      const size = 26 + Math.random()*18;
+      heart.style.width = size+'px';
+      heart.style.height = size+'px';
+      heart.style.transform = 'rotate(-45deg)';
+      heart.dataset.x = x;
+      heart.dataset.y = -size;
+      heart.dataset.speed = speed;
+      heart.style.left = x + 'px';
+      heart.style.top = (-size) + 'px';
+      gameArea.appendChild(heart);
+      hearts.push(heart);
+    }
+
+    function removeHeart(h){
+      // safe remove
+      try { h.remove(); } catch(e){}
+      hearts = hearts.filter(x=>x!==h);
+    }
+
+    function gameTick(delta){
+      if(!running) return;
+      // spawn hearts occasionally
+      spawnTimer += delta;
+      if(spawnTimer > 0.6){
+        spawnTimer = 0;
+        spawnHeart();
+      }
+
+      // update hearts positions
+      for(let i = hearts.length-1; i>=0; i--){
+        const h = hearts[i];
+        let y = parseFloat(h.dataset.y);
+        const speed = parseFloat(h.dataset.speed);
+        y += speed * delta;
+        h.dataset.y = y;
+        h.style.top = y + 'px';
+
+        // check collision with basket
+        const hbbox = h.getBoundingClientRect();
+        const bbox = basket.getBoundingClientRect();
+        // simple overlap test
+        const overlap = !(hbbox.right < bbox.left || hbbox.left > bbox.right || hbbox.bottom < bbox.top || hbbox.top > bbox.bottom);
+        if(overlap){
+          // caught!
+          score += 1;
+          scoreEl.textContent = score;
+          // tiny pop animation
+          h.style.transform = "scale(1.2) rotate(-45deg)";
+          setTimeout(()=>removeHeart(h), 80);
+          continue;
+        }
+
+        // remove if off bottom
+        if(y > areaRect.height + 40){
+          removeHeart(h);
+        }
+      }
+    }
+
+    // game loop driven by rAF
+    let lastTime = null;
+    function gameLoop(ts){
+      if(!running){ lastTime = null; return; }
+      if(!lastTime) lastTime = ts;
+      const delta = (ts - lastTime)/1000; // seconds
+      lastTime = ts;
+
+      // update timers
+      timeLeft -= delta;
+      if(timeLeft < 0) timeLeft = 0;
+      timeEl.textContent = Math.ceil(timeLeft);
+
+      gameTick(delta);
+
+      if(timeLeft <= 0){
+        endGame();
+        return;
+      }
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    function startGame(){
+      // reset state
+      resetBasket();
+      timeLeft = GAME_DURATION;
+      score = 0;
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      statusEl.textContent = "Game in progress...";
+      rateBtn.style.display = 'none';
+
+      // remove any leftover hearts
+      hearts.forEach(h=>h.remove());
+      hearts = [];
+
+      running = true;
+      lastTime = null;
+      gameLoopId = requestAnimationFrame(gameLoop);
+    }
+
+    function endGame(){
+      running = false;
+      statusEl.textContent = "Game over! You scored " + score;
+      rateBtn.style.display = 'inline-block';
+      // stop any leftover hearts movement
+      hearts.forEach(h=>{
+        // small sink animation
+        h.style.transition = 'opacity 0.6s';
+        h.style.opacity = 0.2;
+      });
+      // Cancel RAF just in case
+      if(gameLoopId) cancelAnimationFrame(gameLoopId);
+    }
+
+    // Input handling: mouse move inside game area
+    function onMouseMove(e){
+      areaRect = gameArea.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const x = clientX - areaRect.left - basket.offsetWidth/2;
+      basketX = x;
+      updateBasket();
+    }
+
+    // Keyboard control
+    window.addEventListener('keydown', e=>{
+      if(!areaRect) resetBasket();
+      if(e.key === 'ArrowLeft' || e.key === 'a'){
+        basketX -= 30;
+        updateBasket();
+      } else if(e.key === 'ArrowRight' || e.key === 'd'){
+        basketX += 30;
+        updateBasket();
+      }
+    });
+
+    // pointer events for dragging
+    let dragging = false;
+    basket.addEventListener('pointerdown', e=>{
+      dragging = true;
+      basket.setPointerCapture(e.pointerId);
+    });
+    window.addEventListener('pointerup', e=> dragging = false);
+    window.addEventListener('pointermove', e=>{
+      if(!dragging) return;
+      onMouseMove(e);
+    });
+
+    // touch on whole area to move basket
+    gameArea.addEventListener('touchmove', e=>{
+      e.preventDefault();
+      onMouseMove(e);
+    }, {passive:false});
+    gameArea.addEventListener('mousemove', onMouseMove);
+
+    // Play button wiring
+    playBtn.addEventListener('click', ()=>{
+      startGame();
+    });
+
+    // When the rating button clicked we will reveal webcam (handled separately)
+    // Expose a small hook to call externally
+    window.startRatingFromUI = function(){
+      // stop game if running
+      running = false;
+      if(gameLoopId) cancelAnimationFrame(gameLoopId);
+      statusEl.textContent = "Opening webcam...";
+      // reveal webcam area - actual webcam init handled later
+      document.getElementById('webcam-container').style.display = 'block';
+      // call the external function to start the model/webcam (loaded below)
+      if(typeof initRating === 'function') initRating();
+    };
+
+    rateBtn.addEventListener('click', ()=>{
+      window.startRatingFromUI();
+    });
+
+    // responsive setup
+    window.addEventListener('resize', ()=>{
+      if(!areaRect) return;
+      areaRect = gameArea.getBoundingClientRect();
+      updateBasket();
+    });
+
+    // initialize basket bounds on load
+    resetBasket();
+
+  })();
+
+  /***************************************
+   * Rating: Teachable Machine integration
+   * (webcam starts only when user clicks Rate)
+   * Uses the same approach as your original
+   ***************************************/
+  (function(){
     // the link to your model provided by Teachable Machine export panel
-    const URL = "./my_model/";
-
+    const URL = "./my_model/"; // KEEP this path as your model folder
     let model, webcam, labelContainer, maxPredictions;
+    let webcamPlaying = false;
+    let predictRAF = null;
 
-    // Load the image model and setup the webcam
-    async function init() {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
+    async function loadModel(){
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+      // prepare label container
+      labelContainer = document.getElementById("label-container");
+      labelContainer.innerHTML = '';
+      for (let i = 0; i < maxPredictions; i++) {
+        const d = document.createElement('div');
+        d.textContent = 'Loading...';
+        labelContainer.appendChild(d);
+      }
+    }
 
-        // load the model and metadata
-        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
-        // or files from your local hard drive
-        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
+    // Setup webcam and start prediction
+    async function startWebcam(){
+      if(webcamPlaying) return;
+      const flip = true;
+      webcam = new tmImage.Webcam(320, 320, flip);
+      await webcam.setup(); // request access
+      await webcam.play();
+      // append canvas to container (replace if existing)
+      const container = document.getElementById("webcam-container");
+      container.innerHTML = '';
+      container.appendChild(webcam.canvas);
+      labelContainer.style.display = 'flex';
+      webcamPlaying = true;
+      loopPredict();
+    }
 
-        // Convenience function to setup a webcam
-        const flip = true; // whether to flip the webcam
-        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
-        await webcam.setup(); // request access to the webcam
-        await webcam.play();
-        window.requestAnimationFrame(loop);
+    async function loopPredict(){
+      if(!webcamPlaying) return;
+      webcam.update();
+      // predict can take image, video, or canvas
+      const prediction = await model.predict(webcam.canvas);
+      for (let i = 0; i < maxPredictions; i++) {
+        const classPrediction = prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+        labelContainer.childNodes[i].innerHTML = classPrediction;
+      }
+      predictRAF = requestAnimationFrame(loopPredict);
+    }
 
-        // append elements to the DOM
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        labelContainer = document.getElementById("label-container");
-        for (let i = 0; i < maxPredictions; i++) { // and class labels
-            labelContainer.appendChild(document.createElement("div"));
+    // Stop webcam/prediction if needed
+    function stopWebcam(){
+      if(!webcamPlaying) return;
+      webcam.stop();
+      webcamPlaying = false;
+      if(predictRAF) cancelAnimationFrame(predictRAF);
+    }
+
+    // Public init called by game when Rate clicked
+    window.initRating = async function(){
+      try{
+        // If model not loaded yet, load it (first time)
+        if(!model){
+          await loadModel();
         }
-    }
+        await startWebcam();
+        // change status to instruct user
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = "Show ❤️, 👍, or 👎 to the camera to rate!";
+        // Show labels area explicitly
+        document.getElementById('label-container').style.display = 'flex';
+      } catch(err){
+        console.error("Error starting rating:", err);
+        alert("Couldn't start the webcam. Please allow camera access and try again.");
+        document.getElementById('status').textContent = "Camera blocked or not available.";
+      }
+    };
 
-    async function loop() {
-        webcam.update(); // update the webcam frame
-        await predict();
-        window.requestAnimationFrame(loop);
-    }
+    // (optional) expose stop function
+    window.stopRating = stopWebcam;
 
-    // run the webcam image through the image model
-    async function predict() {
-        // predict can take in an image, video or canvas html element
-        const prediction = await model.predict(webcam.canvas);
-        for (let i = 0; i < maxPredictions; i++) {
-            const classPrediction =
-                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
-            labelContainer.childNodes[i].innerHTML = classPrediction;
-        }
-    }
-</script>
+    // Preload model in background so it's faster when they click (non-blocking)
+    // If you don't want preloading, remove this call.
+    loadModel().then(()=> {
+      // model loaded silently before user clicks Rate
+      console.log('Model preloaded.');
+    }).catch(e=>{
+      // ignore preload errors; real init will show alerts
+      console.log('Model preload failed (ok):', e);
+    });
 
-
+  })();
+  </script>
+</body>
+</html>
