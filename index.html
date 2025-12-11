@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Catch the Hearts — Rate Signs</title>
+  <title>Catch the Hearts & Rate the game</title>
 
   <!-- Teachable Machine dependencies (keep these as in your original) -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -142,29 +142,37 @@
       touch-action:none;
     }
 
-    .heart{
-      position:absolute;
-      width:36px;
-      height:36px;
-      background: radial-gradient(circle at 30% 30%, #ff7aa9, #ff4d88);
-      transform: rotate(-45deg);
-      border-radius:8px;
-      box-shadow: 0 6px 12px rgba(255,80,140,0.25);
-    }
-    /* create heart shape by pseudo elements */
-    .heart:before, .heart:after{
-      content:"";
-      position:absolute;
-      width:36px;
-      height:36px;
-      background: radial-gradient(circle at 30% 30%, #ff7aa9, #ff4d88);
-      border-radius:50%;
-      top:-18px;
-      left:0;
-    }
-    .heart:after{
-      left:18px;
-    }
+.heart {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  background: radial-gradient(circle at 30% 30%, #ff5a8d, #ff1c70);
+  box-shadow: 0 4px 8px rgba(255, 50, 120, 0.3);
+  transform: rotate(-45deg);
+  top: 0;
+  left: 0;
+}
+
+.heart::before,
+.heart::after {
+  content: "";
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  background: radial-gradient(circle at 30% 30%, #ff5a8d, #ff1c70);
+  border-radius: 50%;
+}
+
+.heart::before {
+  top: -18px;
+  left: 0;
+}
+
+.heart::after {
+  top: 0;
+  left: 18px;
+}
+
     /* small responsive tweaks */
     @media (max-width:700px){
       #hud{ order:2; width:100%; justify-content:space-between }
